@@ -1,9 +1,14 @@
 import sys 
 import uuid
 import pyodbc
+import json
+import pandas as pd
 from PyQt6.uic import loadUi
 from PyQt6 import QtWidgets
 from PyQt6.QtWidgets import QDialog, QApplication, QWidget, QStackedWidget
+from data import Country
+from data import History
+from data import Global
 
 
 # connecting to my database
@@ -13,11 +18,13 @@ conn = pyodbc.connect('Driver={SQL Server};'
                      'Trusted_Connection=yes;')
 cursor = conn.cursor()
 
+
+
 # create a welcome class.
 class welcomeScreen(QDialog):
     def __init__(self):
         super(welcomeScreen, self).__init__()
-        loadUi("C:\\Python310\\Project\\UI\\welcomeScreen.ui", self) # loading the ui of the page
+        loadUi("C:\\Python310\\CovidApp-Project\\UI\\welcomeScreen.ui", self) # loading the ui of the page
             
         self.welcomeLogin.clicked.connect(self.gotoLogin) # when the login button is clicked it will redirect to login page
         self.welcomeSignup.clicked.connect(self.gotoSignup) # when the create account button is clicked it will redirect to sign up age
@@ -39,7 +46,7 @@ class welcomeScreen(QDialog):
 class SignupScreen(QDialog):
     def __init__(self):
         super(SignupScreen, self).__init__()
-        loadUi("C:\\Python310\\Project\\UI\\signup2.ui", self) # loading the signup ui
+        loadUi("C:\\Python310\\CovidApp-Project\\UI\\signup2.ui", self) # loading the signup ui
         self.signup.clicked.connect(self.successSignup) # a click signal that successfully sign user up 
         self.backtoLogin.clicked.connect(self.goBackToLoginFromSignup) # a click signal that takes user to login when done signing up..
         self.signPasswordField.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password) # hashing the password inputed by user
@@ -51,11 +58,12 @@ class SignupScreen(QDialog):
         firstname = self.fnameField.text().strip() # saving my user firstname input in a variable and removing the whitespaces 
         lastname = self.lnameField.text().strip() # saving my user lastbname input in a variable and removing the whitespaces 
         email = self.signEmailField.text().strip() # saving my user email input in a variable and removing the whitespaces 
+        country = self.countryField.text().strip() # saving my user country input in a variable and removing the whitespaces 
         password = self.signPasswordField.text().strip() # saving my user password input in a variable and removing the whitespaces 
         confirmPassword = self.signConPasswordField.text().strip() # saving my user confirm password input in a variable and removing the whitespaces 
 
          
-        if len(firstname) == 0 or len(lastname) == 0 or len(email) == 0 or len(password) == 0 or len(confirmPassword) == 0: # checking if the user input are not empty
+        if len(firstname) == 0 or len(lastname) == 0 or len(email) == 0 or len(country) == 0 or len(password) == 0 or len(confirmPassword) == 0: # checking if the user input are not empty
             self.signupErrorMessage.setText("Please input all fields") # displaying an error messsage if they are empty..
         else:
             self.signupErrorMessage.setText("") 
@@ -64,8 +72,8 @@ class SignupScreen(QDialog):
                 # catching this error shoudld in case the user enter an existing email in my database... 
                 try: 
                     # saving my user data in a database..
-                    InsertQuery = ("INSERT INTO CovidAuthentication (ID, Firstname, Lastname, Email, Password) VALUES(?, ?, ?, ?, ?)")
-                    InsertValues = (id,firstname, lastname, email, password)                                      
+                    InsertQuery = ("INSERT INTO CovidAuthentication (ID, Firstname, Lastname, Email, Country, Password) VALUES(?, ?, ?, ?, ?, ?)")
+                    InsertValues = (id,firstname, lastname, email,country, password)                                      
                     cursor.execute(InsertQuery, InsertValues)
                     conn.commit()
                     print(cursor.rowcount, "record inserted.")
@@ -88,12 +96,12 @@ class SignupScreen(QDialog):
 class LoginScreen(QDialog):
     def __init__(self):
         super(LoginScreen, self).__init__()
-        loadUi("C:\\Python310\\Project\\UI\\Login2.ui", self) # laoding my login ui..
+        loadUi("C:\\Python310\\CovidApp-Project\\UI\\Login2.ui", self) # laoding my login ui..
         self.passwordField.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password) # hashing my login details
         self.login.clicked.connect(self.successLogin) # a click signal that successfully log user in
         self.backtoSignup.clicked.connect(self.goBackToSignupFromLogin) # a click signal that successfully take user back to sign up 
         self.forgotPassword.clicked.connect(self.gotoUpdatePassword)  # a click signal that successfully take user back to update password if forgotten       
-    
+        
     # loginning user into the app..
     def successLogin(self):
         email = self.emailField.text().strip() # saving my user email input in a variable and removing the whitespaces 
@@ -106,7 +114,7 @@ class LoginScreen(QDialog):
         else:
            # query the data with the user email
            self.errorMessage.setText("")
-           SelectQuery = ("SELECT Email, Password FROM CovidAuthentication WHERE (Email = ?)")
+           SelectQuery = ("SELECT Email, Password, country FROM CovidAuthentication WHERE (Email = ?)")
            cursor.execute(SelectQuery, email)
            row = cursor.fetchall()
            
@@ -114,9 +122,9 @@ class LoginScreen(QDialog):
            if (row):
             self.emailErrorMessage.setText("")
             for i in row:
-                print(i)           
+                #print(i)           
                 if (password in i):
-                    self.errorMessage.setText("valid")
+                    self.gotoMainScreen()
                 else:
                     self.errorMessage.setText("Incorrect Password")
            else:
@@ -135,18 +143,87 @@ class LoginScreen(QDialog):
         updatePassword = UpdatePassword()  # creating and object of the updatePassword screen
         widget.addWidget(updatePassword) # adding the screen to stack
         widget.setCurrentIndex(widget.currentIndex()+1) # chaning the index once the screen is change to updatePassword screen
+        
 
+    def gotoMainScreen(self):
+        self.mainScreen = MainScreen()
+        widget.addWidget(self.mainScreen)
+        widget.setCurrentIndex(widget.currentIndex()+1)
+
+
+       
+class MainScreen(QDialog):
+    def __init__(self):
+        super(MainScreen, self).__init__()
+        loadUi("C:\\Python310\\CovidApp-Project\\UI\\main.ui", self)
+        self.searchBtn.clicked.connect(self.search)
+        
+        globals = Global()
+        globalData = json.loads(globals)
+        population = str(globalData['data']['population'])
+        
+        
+        self.poulationLabel.setText(str(globalData['data']['population']))
+        self.confirmedLabel.setText(str(globalData['data']['cases']))
+        self.deathLabel.setText(str(globalData['data']['deaths']))
+        self.recoveryLabel.setText(str(globalData['data']['recovered']))
+        self.activeLabel.setText(str(globalData['data']['active']))
+        self.sampleLabel.setText(str(globalData['data']['tests']))
+        
+      
+        getCountry = Country()
+        countryData = json.loads(getCountry)
+        self.countryBox.addItems(countryData['response'])
+        
+    def search(self):
+        date = self.dateEdit.text().strip()
+        country = str(self.countryBox.currentText())   
+        
+        h = History(country, date)
+        data = json.loads(h) 
+    
+        try:
+            self.dateError.setText('')
+            print('yes')
+            print(data['response'][-1]['population'])
+            print(data['response'][-1]['cases']['total'])
+            
+            self.poulationLabel.setText(str(data['response'][-1]['population']))
+            self.confirmedLabel.setText(str(data['response'][-1]['cases']['total']))
+            self.deathLabel.setText(str(data['response'][-1]['deaths']['total']))
+            self.recoveryLabel.setText(str(data['response'][-1]['cases']['recovered']))
+            self.activeLabel.setText(str(data['response'][-1]['cases']['active']))
+            self.sampleLabel.setText(str(data['response'][-1]['tests']['total']))
+        except:
+            self.dateError.setText('No Covid for this date check for another date')
+        
+
+        
+'''
+        #self.poulationLabel.setText(data[i]['population'])
+            
+            
+       
+        # print(currentItem)
+        #self.poulationLabel.setText(currentItem['population'])
+        #print(data2['response'])
+        
+
+        
+'''        
+
+        
 # class Upadate Password            
 class UpdatePassword(QDialog):
     def __init__(self):
         super(UpdatePassword, self).__init__()
-        loadUi("C:\\Python310\\Project\\UI\\passwordUpdate.ui", self)
+        loadUi("C:\\Python310\\CovidApp-Project\\UI\\passwordUpdate.ui", self)
         self.update.clicked.connect(self.successUpdate) # a click signal that successfully change user pasword
         self.updateBackToLogin.clicked.connect(self.gotoLoginFromUpdate) # a click signal that successfully take user to the login page form update password
         self.updateBackToSignup.clicked.connect(self.gotoSignupFromUpdate) # a click signal that successfully take user to the signup page form update password
         self.updatePasswordField.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password) # hashing the  password inputed by user
         self.updateConPasswordField.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password) # hashing the Confirm  password inputed by user
-    
+      
     # changing user password
     def successUpdate(self):
         updateEmail = self.updateEmailField.text().strip()
@@ -194,7 +271,12 @@ class UpdatePassword(QDialog):
         widget.addWidget(UpdateBackToLogin) # adding the screen to stack
         widget.setCurrentIndex(widget.currentIndex()+1) # chaning the index once the screen is change to login screen
         
-                    
+     
+        
+
+
+        
+        
 
 app = QApplication(sys.argv) # crearting an instance of our applicatiob
 window = welcomeScreen() # creating an object of the main screen
