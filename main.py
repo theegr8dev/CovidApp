@@ -2,10 +2,14 @@ import sys
 import uuid
 import pyodbc
 import json
-import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 from PyQt6.uic import loadUi
 from PyQt6 import QtWidgets
-from PyQt6.QtWidgets import QDialog, QApplication, QWidget, QStackedWidget
+from PyQt6.QtWidgets import QDialog, QApplication, QWidget, QStackedWidget, QHBoxLayout
+
 from data import Country
 from data import History
 from data import Global
@@ -158,59 +162,96 @@ class MainScreen(QDialog):
         loadUi("C:\\Python310\\CovidApp-Project\\UI\\main.ui", self)
         self.searchBtn.clicked.connect(self.search)
         
-        globals = Global()
-        globalData = json.loads(globals)
-        population = str(globalData['data']['population'])
-        
-        
-        self.poulationLabel.setText(str(globalData['data']['population']))
-        self.confirmedLabel.setText(str(globalData['data']['cases']))
-        self.deathLabel.setText(str(globalData['data']['deaths']))
-        self.recoveryLabel.setText(str(globalData['data']['recovered']))
-        self.activeLabel.setText(str(globalData['data']['active']))
-        self.sampleLabel.setText(str(globalData['data']['tests']))
-        
-      
         getCountry = Country()
         countryData = json.loads(getCountry)
         self.countryBox.addItems(countryData['response'])
         
+        self.graphBox.addItems(['Global Graph', 'Country Graph'])
+        
+        
+        self.horizontal_layout = QtWidgets.QHBoxLayout(self.frame_8)
+        self.horizontal_layout.setObjectName("horizontal_layout")
+        self.figure = plt.figure()
+        self.canvas = FigureCanvas(self.figure)    
+        self.horizontal_layout.addWidget(self.canvas)
+        
+        self.Global()
+     
+      
+
+ 
     def search(self):
+        
+        graph = self.graphBox.currentText()
+        country = str(self.countryBox.currentText())
         date = self.dateEdit.text().strip()
-        country = str(self.countryBox.currentText())   
         
-        h = History(country, date)
-        data = json.loads(h) 
-    
-        try:
-            self.dateError.setText('')
-            print('yes')
-            print(data['response'][-1]['population'])
-            print(data['response'][-1]['cases']['total'])
-            
-            self.poulationLabel.setText(str(data['response'][-1]['population']))
-            self.confirmedLabel.setText(str(data['response'][-1]['cases']['total']))
-            self.deathLabel.setText(str(data['response'][-1]['deaths']['total']))
-            self.recoveryLabel.setText(str(data['response'][-1]['cases']['recovered']))
-            self.activeLabel.setText(str(data['response'][-1]['cases']['active']))
-            self.sampleLabel.setText(str(data['response'][-1]['tests']['total']))
-        except:
-            self.dateError.setText('No Covid for this date check for another date')
-        
+        searchObj = History(country, date)         
+        data = json.loads(searchObj)
 
-        
-'''
-        #self.poulationLabel.setText(data[i]['population'])
+        if (graph == "Country Graph"):
+            try:
+                self.dateError.setText('')
+                population = data['response'][0]['population']
+                confirmCases = data['response'][0]['cases']['total']
+                deaths = data['response'][0]['deaths']['total']
+                recovered = data['response'][0]['cases']['recovered']
+                active = data['response'][0]['cases']['active']
+                test = data['response'][0]['tests']['total']
+                        
+                
+                self.poulationLabel.setText(str(population))
+                self.confirmedLabel.setText(str(confirmCases))
+                self.deathLabel.setText(str(deaths))
+                self.recoveryLabel.setText(str(recovered))
+                self.activeLabel.setText(str(active))
+                self.sampleLabel.setText(str(test))
+                
+                x = ['tests', 'cases', 'active', 'recovered', 'death' ]
+                y = [test, confirmCases, active ,recovered, deaths]
+                self.figure.clear()
+                plt.bar(x, y)
+                plt.title(country + " Covid Stats For " + date)        
+                plt.xlabel('RESPONSE')
+                plt.ylabel('NUMBER')
+                self.canvas.draw()
             
-            
-       
-        # print(currentItem)
-        #self.poulationLabel.setText(currentItem['population'])
-        #print(data2['response'])
-        
 
+            except:
+                self.dateError.setText('No Covid for the specify date check for another date')
+                self.Global()
+        else:
+            self.Global()
+            self.dateError.setText('Make sure to switch graph to see for your country')
+
+            
+    def Global(self):         
+        globals = Global()
+        globalData = json.loads(globals)
+        population = str(globalData['data']['population'])
         
-'''        
+        gCases = globalData['data']['cases']
+        gDeaths = globalData['data']['deaths']
+        gRecovered = globalData['data']['recovered']
+        gActive = globalData['data']['active']
+        gTests = globalData['data']['tests']
+        
+        self.poulationLabel.setText(str(globalData['data']['population']))
+        self.confirmedLabel.setText(str(gCases))
+        self.deathLabel.setText(str(gDeaths))
+        self.recoveryLabel.setText(str(gRecovered))
+        self.activeLabel.setText(str(gActive))
+        self.sampleLabel.setText(str(gTests))   
+
+        xAxis = np.array(['tests', 'cases', 'active', 'recovered', 'death' ])
+        yAxis = np.array([ gTests, gCases,  gActive, gRecovered, gDeaths ])        
+            
+        plt.bar(xAxis, yAxis)
+        plt.title("Global Covid Stats")        
+        plt.xlabel('RESPONSE')
+        plt.ylabel('NUMBER')
+        self.canvas.draw()                
+                
 
         
 # class Upadate Password            
