@@ -4,8 +4,7 @@ from datetime import date
 
 
 def Global():
-    import requests
-
+    
     url = "https://covid-19-v1.p.rapidapi.com/v1/all"
 
     headers = {
@@ -19,7 +18,7 @@ def Global():
 
 
 def Country():
-    import requests
+
 
     url = "https://covid-193.p.rapidapi.com/countries"
 
@@ -36,7 +35,7 @@ def Country():
 Date = date.today()
 currentDay =  Date.strftime("%Y-%m-%d")
 def History(country, Day = currentDay):
-    # currentDate = input('Enter day Y-M-D: ')
+
 
     url = "https://covid-193.p.rapidapi.com/history"
 

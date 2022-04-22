@@ -81,6 +81,7 @@ class SignupScreen(QDialog):
                     cursor.execute(InsertQuery, InsertValues)
                     conn.commit()
                     print(cursor.rowcount, "record inserted.")
+                    self.goBackToLoginFromSignup()
                     self.duplicateEmail.setText("")
                 except:
                     self.duplicateEmail.setText("Email is already in use")
@@ -128,7 +129,10 @@ class LoginScreen(QDialog):
             for i in row:
                 #print(i)           
                 if (password in i):
+                    #self.errorMessage.setText("")
+                    self.emailErrorMessage.setText("Valid User Please wait")
                     self.gotoMainScreen()
+                    
                 else:
                     self.errorMessage.setText("Incorrect Password")
            else:
@@ -284,7 +288,7 @@ class UpdatePassword(QDialog):
             if (row): 
                 # confirming the password is valid before passing it inot the database
                 if (updatePassword == updateConPassword): 
-                    self.updateErrorMessage.setText("Password changed..")
+                    self.updateErrorMessage.setText("Password changed.. Procced to login")
                     # update the datase once the password is confirmed correct
                     UpdateQuery = ("UPDATE CovidAuthentication set Password = ? where Email = ?")
                     UpdateValues = (updatePassword, updateEmail)
